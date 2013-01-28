@@ -1,0 +1,88 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+
+#import datetime
+import sys
+import time
+#import traceback
+
+#from dateutil.relativedelta import relativedelta
+#import zmq
+
+from nova import flags
+from nova import log as logging
+from nova import utils
+
+#from dough import billing
+from dough import context as dough_context
+from dough import db
+#from dough import exception
+from kanyun.common.app import App
+
+utils.default_flagfile(filename='/etc/dough/dough.conf')
+flags.FLAGS(sys.argv)
+logging.setup()
+
+FLAGS = flags.FLAGS
+
+if __name__ == '__main__':
+    from dough.billing import api
+    app = App(conf="dough/dough.conf", name="farmer")
+    context = dough_context.get_admin_context()
+    context.app = app
+    while True:
+        current_time = utils.utcnow()
+        print "-" * 30, str(current_time)
+        app.info("------------ farming ----------")
+        subscriptions = list()
+        _subscriptions = db.subscription_get_all(context)
+        for sub in _subscriptions:
+            subscription_id = sub['id']
+            status = sub['status']
+            tenant_id = sub['project_id']
+            resource_uuid = sub['resource_uuid']
+            created_at = sub['created_at']
+            updated_at = sub['updated_at']
+            expires_at = sub['expires_at']
+            if expires_at > current_time:
+                continue
+            product = sub['product']
+            if product is None:
+                app.warning("product is None, subid=" + str(sub.id))
+                continue
+
+            order_unit = sub['product']['order_unit']
+            order_size = sub['product']['order_size']
+            price = sub['product']['price']
+            currency = sub['product']['currency']
+
+            region_name = sub['product']['region']['name']
+            item_name = sub['product']['item']['name']
+            pay_type = sub['product']['payment_type']
+            interval_unit = pay_type['interval_unit']
+            interval_size = pay_type['interval_size']
+            is_prepaid = pay_type['is_prepaid']
+            subscriptions.append([subscription_id, status, tenant_id,
+                                  resource_uuid, created_at, updated_at,
+                                  expires_at, order_unit, order_size,
+                                  price, currency, region_name, item_name,
+                                  interval_unit, interval_size, is_prepaid])
+
+        for (subscription_id, status, tenant_id, resource_uuid,
+             created_at, updated_at, expires_at, order_unit,
+             order_size, price, currency, region_name, item_name,
+             interval_unit, interval_size, is_prepaid) in subscriptions:
+            print "-" * 20
+            print "farming:subid=", subscription_id, "resid=", resource_uuid, "tid=", tenant_id
+            print "item_name=", item_name
+
+            action = getattr(api, status)
+            try:
+                action(context, subscription_id, tenant_id, item_name, resource_uuid,
+                   created_at, updated_at, expires_at, order_unit,
+                   order_size, price, currency, region_name,
+                   interval_unit, interval_size, is_prepaid)
+            except Exception, e:
+                print e, subscription_id, item_name
+        print "<END>"
+        time.sleep(60 * 2)

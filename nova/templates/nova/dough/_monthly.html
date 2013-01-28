@@ -1,0 +1,12 @@
+{% load i18n sizeformat %}
+
+<div class="usage_info_wrapper">
+  <form action="" method="get" id="date_form" class="form-horizontal">
+    <h3>{% trans "Select a month to query its usage" %}: </h3>
+    <div class="form-row">
+      {{ form.month }}
+      {{ form.year }}
+      <button class="btn btn-small" type="submit">{% trans "Submit" %}</button>
+    </div>
+  </form>
+</div>

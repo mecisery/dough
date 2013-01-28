@@ -1,0 +1,303 @@
+{% load i18n %}
+
+<div id="cpu_chart" class="pull-left" style="width:50%;height:300px;"></div>
+
+<div id="mem_chart" class="pull-left" style="width:50%;height:300px;"></div>
+
+<div id="blk_chart" class="pull-left" style="width:50%;height:300px;"></div>
+
+<div id="nic_chart" class="pull-left" style="width:50%;height:300px;"></div>
+
+<!--[if lte IE 8]><script language="javascript" type="text/javascript" src="/static/js/excanvas.min.js"></script><![endif]-->
+<script language="javascript" type="text/javascript" src="/static/horizon/js/jquery/jquery.flot.js"></script>
+<script language="javascript" type="text/javascript" src="/static/horizon/js/jquery/jquery.flot.time.js"></script>
+<script language="javascript" type="text/javascript" src="/static/horizon/js/jquery/jquery.flot.selection.js"></script>
+<script type="text/javascript">
+$(function () {
+  var cpu_data= eval("("+"{{ cpu_data }}"+")");
+  for (var i = 0; i < cpu_data.length; ++i)
+    cpu_data[i][0] *= 1000;
+  var options = {
+      xaxis: { 
+          mode: "time", 
+          tickLength: 10,
+          timeformat: "%H:%M"
+      },
+      yaxis:{
+          tickFormatter: function (val, axis) {
+              return val.toFixed(4)+"%";
+          }
+      },
+      series: {
+               lines: { show: true },
+      },
+      grid: { hoverable:true }
+  };
+  
+  var plot = $.plot($("#cpu_chart"), [{ data: cpu_data, label: "Instance CPU", color: "#AFD8F8"}], options);
+
+  function showTooltip(x, y, contents) {
+      $('<div id="cpu_tooltip">' + contents + '</div>').css( {
+          position: 'absolute',
+          display: 'none',
+          top: y + 5,
+          left: x + 5,
+          border: '1px solid #fdd',
+          padding: '2px',
+          'background-color': '#fee',
+          opacity: 0.80
+      }).appendTo("body").fadeIn(200);
+  }
+  var previousPoint = null;
+  $("#cpu_chart").bind("plothover", function (event, pos, item) {
+      if (item) {
+          if (previousPoint != item.dataIndex) {
+              previousPoint = item.dataIndex;
+              
+              $("#cpu_tooltip").remove();
+              var zone = new Date();
+              var x = new Date(item.datapoint[0]+(zone.getTimezoneOffset()*60000)), 
+                  y = item.datapoint[1].toFixed(2);
+              var s = x.getFullYear() + "-";
+              s += ("0"+(x.getMonth()+1)).slice(-2) + "-";
+              s += ("0"+x.getDate()).slice(-2) + " ";
+              s += ("0"+x.getHours()).slice(-2) + ":";
+              s += ("0"+x.getMinutes()).slice(-2);
+              showTooltip(item.pageX, item.pageY,
+                          item.series.label + " of " + s + " = " + y + "%");
+          }
+      }
+      else {
+          $("#cpu_tooltip").remove();
+          previousPoint = null;            
+      }
+  });
+});
+$(function () {
+    var mem_free= eval("("+"{{ mem_free_data }}"+")");
+    var mem_max= eval("("+"{{ mem_max_data }}"+")");
+    var mem=[];
+    for (var i = 0; i < mem_free.length; ++i){
+        tem = ((mem_max[i][1]-mem_free[i][1])/mem_max[i][1])*100;
+        mem[i] = [mem_free[i][0]*1000,tem];
+    }
+
+    var options = {
+        xaxis: { 
+            mode: "time", 
+            tickLength: 10,
+            timeformat: "%H:%M"
+        },
+        yaxis:{
+            tickFormatter: function (val, axis) {
+                return val.toFixed(4)+"%";
+            }
+        },
+        series: {
+                 lines: { show: true },
+        },
+        grid: { hoverable:true }
+    };
+    
+    var plot = $.plot($("#mem_chart"), [{ data: mem, label: "Instance Memory"}], options);
+
+    function showTooltip(x, y, contents) {
+        $('<div id="mem_tooltip">' + contents + '</div>').css( {
+            position: 'absolute',
+            display: 'none',
+            top: y + 5,
+            left: x + 5,
+            border: '1px solid #fdd',
+            padding: '2px',
+            'background-color': '#fee',
+            opacity: 0.80
+        }).appendTo("body").fadeIn(200);
+    }
+    var previousPoint = null;
+    $("#mem_chart").bind("plothover", function (event, pos, item) {
+        if (item) {
+            if (previousPoint != item.dataIndex) {
+                previousPoint = item.dataIndex;
+                
+                $("#mem_tooltip").remove();
+                var zone = new Date();
+                var x = new Date(item.datapoint[0]+(zone.getTimezoneOffset()*60000)), 
+                    y = item.datapoint[1].toFixed(2);
+                var s = x.getFullYear() + "-";
+                s += ("0"+(x.getMonth()+1)).slice(-2) + "-";
+                s += ("0"+x.getDate()).slice(-2) + " ";
+                s += ("0"+x.getHours()).slice(-2) + ":";
+                s += ("0"+x.getMinutes()).slice(-2);
+                showTooltip(item.pageX, item.pageY,
+                            item.series.label + " of " + s + "<br>"+
+                            "use  ratio:" + y + "%<br>" + 
+                            "memory max:" + mem_max[item.dataIndex][1] +"KB<br>"+
+                            "memory use:" + (mem_max[item.dataIndex][1]-mem_free[item.dataIndex][1]).toFixed(0)+"KB"
+                            );
+            }
+        }
+        else {
+            $("#mem_tooltip").remove();
+            previousPoint = null;            
+        }
+    });
+});
+$(function () {
+  var blk_read = eval("("+"{{ blk_read }}"+")");
+  var blk_write = eval("("+"{{ blk_write }}"+")");
+  var blk_name = eval("("+$('<div/>').html("{{ blk_name }}").text()+")");
+
+  for (var i = 0; i < blk_name.length; ++i){
+    for(var j = 0; j<blk_read[i].length; ++j){
+      blk_read[i][j][0] *= 1000;
+      blk_write[i][j][0] *= 1000;  
+    }
+  }
+
+  var options = {
+      xaxis: { 
+          mode: "time", 
+          tickLength: 10,
+          timeformat: "%H:%M"
+      },
+      yaxis:{
+          tickFormatter: function (val, axis) {
+              return val/1000 + "KB";
+          }
+      },
+      series: {
+               lines: { show: true },
+      },
+      grid: { hoverable:true }
+  };
+
+  data = []
+  for(i=0;i<blk_name.length;i++){
+    data.push({
+      data: blk_read[i],
+      label: blk_name[i]+" block read"
+    });
+    data.push({
+      data: blk_write[i],
+      label: blk_name[i]+ " block write"
+    });
+  }
+  var plot = $.plot($("#blk_chart"), data , options);
+
+  function showTooltip(x, y, contents) {
+      $('<div id="blk_tooltip">' + contents + '</div>').css( {
+          position: 'absolute',
+          display: 'none',
+          top: y + 5,
+          left: x + 5,
+          border: '1px solid #fdd',
+          padding: '2px',
+          'background-color': '#fee',
+          opacity: 0.80
+      }).appendTo("body").fadeIn(200);
+  }
+  var previousPoint = null;
+  $("#blk_chart").bind("plothover", function (event, pos, item) {
+      if (item) {
+          if (previousPoint != item.dataIndex) {
+              previousPoint = item.dataIndex;
+              
+              $("#blk_tooltip").remove();
+              var zone = new Date();
+              var x = new Date(item.datapoint[0]+(zone.getTimezoneOffset()*60000)), 
+                  y = item.datapoint[1].toFixed(2);
+              var s = x.getFullYear() + "-";
+              s += ("0"+(x.getMonth()+1)).slice(-2) + "-";
+              s += ("0"+x.getDate()).slice(-2) + " ";
+              s += ("0"+x.getHours()).slice(-2) + ":";
+              s += ("0"+x.getMinutes()).slice(-2);
+              showTooltip(item.pageX, item.pageY,
+                          item.series.label + " of " + s + " = " + y + " B");
+          }
+      }
+      else {
+          $("#blk_tooltip").remove();
+          previousPoint = null;            
+      }
+  });
+});
+$(function () {
+  var nic_incoming = eval("("+"{{ nic_incoming }}"+")");
+  var nic_outgoing = eval("("+"{{ nic_outgoing }}"+")");
+  var nic_name = eval("("+$('<div/>').html("{{ nic_name }}").text()+")");
+
+  for (var i = 0; i < nic_name.length; ++i){
+    for(var j = 0; j < nic_incoming[i].length; ++j){
+      nic_incoming[i][j][0] *= 1000;
+      nic_outgoing[i][j][0] *= 1000;
+    }
+  }
+
+  var options = {
+      xaxis: { 
+          mode: "time", 
+          tickLength: 10,
+          timeformat: "%H:%M"
+      },
+      yaxis:{
+          tickFormatter: function (val, axis) {
+              return val/1000+"KB";
+          }
+      },
+      series: {
+               lines: { show: true },
+      },
+      grid: { hoverable:true }
+  };
+
+  data = []
+  for(i=0;i<nic_name.length;i++){
+    data.push({
+      data: nic_outgoing[i],
+      label: nic_name[i]+" nic outgoing"
+    });
+    data.push({
+      data: nic_incoming[i],
+      label: nic_name[i]+ " nic incoming"
+    });
+  }
+  var plot = $.plot($("#nic_chart"), data , options);
+
+  function showTooltip(x, y, contents) {
+      $('<div id="nic_tooltip">' + contents + '</div>').css( {
+          position: 'absolute',
+          display: 'none',
+          top: y + 5,
+          left: x + 5,
+          border: '1px solid #fdd',
+          padding: '2px',
+          'background-color': '#fee',
+          opacity: 0.80
+      }).appendTo("body").fadeIn(200);
+  }
+  var previousPoint = null;
+  $("#nic_chart").bind("plothover", function (event, pos, item) {
+      if (item) {
+          if (previousPoint != item.dataIndex) {
+              previousPoint = item.dataIndex;
+              
+              $("#nic_tooltip").remove();
+              var zone = new Date();
+              var x = new Date(item.datapoint[0]+(zone.getTimezoneOffset()*60000)), 
+                  y = item.datapoint[1].toFixed(2);
+              var s = x.getFullYear() + "-";
+              s += ("0"+(x.getMonth()+1)).slice(-2) + "-";
+              s += ("0"+x.getDate()).slice(-2) + " ";
+              s += ("0"+x.getHours()).slice(-2) + ":";
+              s += ("0"+x.getMinutes()).slice(-2);
+              showTooltip(item.pageX, item.pageY,
+                          item.series.label + " of " + s + " = " + y + "B");
+          }
+      }
+      else {
+          $("#nic_tooltip").remove();
+          previousPoint = null;            
+      }
+  });
+});
+</script>

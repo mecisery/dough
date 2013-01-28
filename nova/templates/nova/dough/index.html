@@ -1,0 +1,19 @@
+{% extends 'nova/base.html' %}
+{% load i18n %}
+{% block title %}Dough{% endblock %}
+
+{% block page_header %}
+  {% url horizon:nova:dough:index as refresh_link %}
+  {# to make searchable false, just remove it from the include statement #}
+  {% include "horizon/common/_page_header.html" with title=_("Dough") refresh_link=refresh_link searchable="true" %}
+{% endblock %}
+
+{% block dash_main%}
+{#  {% include "nova/dough/_monthly.html" %} #}
+  <div class="charge">
+    {{ charge_table.render }}
+  </div>
+  <div class="products">
+    {{ products_table.render }}
+  </div>
+{% endblock %}

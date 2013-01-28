@@ -1,0 +1,17 @@
+Metadata-Version: 1.0
+Name: dough
+Version: 0.1.1
+Summary: OpenStack Billing System
+Home-page: https://github.com/lzyeval/dough
+Author: Sina Corp.
+Author-email: lzyeval@gmail.com
+License: Apache
+Description: OpenStack Billing System
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
